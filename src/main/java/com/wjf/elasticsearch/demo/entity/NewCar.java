@@ -1,17 +1,27 @@
 package com.wjf.elasticsearch.demo.entity;
 
+import com.alibaba.fastjson.annotation.JSONField;
+
 /**
  * @author KingPlus
  * @date 2021年06月14日  22:58
  */
 public class NewCar {
+    @JSONField(name = "CarNum")
     private String CarNum;
+    @JSONField(name = "CarBrand")
     private String CarBrand;
+    @JSONField(name="CarColor")
     private String CarColor;
+    @JSONField(name="CarType")
     private String CarType;
+    @JSONField(name="CarPrice")
     private double CarPrice;
+    @JSONField(name="Displacement")
     private double Displacement;
+    @JSONField(name="Changes")
     private String Changes;
+    @JSONField(name="Pimag")
     private String Pimag;
 
     public String getCarNum() {

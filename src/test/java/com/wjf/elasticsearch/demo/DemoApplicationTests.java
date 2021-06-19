@@ -4,6 +4,7 @@ import com.alibaba.fastjson.JSON;
 import com.wjf.elasticsearch.demo.entity.NewCar;
 import com.wjf.elasticsearch.demo.entity.Person;
 import com.wjf.elasticsearch.demo.mapper.NewCarMapper;
+import org.apache.lucene.search.TotalHits;
 import org.elasticsearch.action.DocWriteRequest;
 import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
 import org.elasticsearch.action.bulk.BulkRequest;
@@ -14,6 +15,8 @@ import org.elasticsearch.action.get.GetRequest;
 import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.action.index.IndexResponse;
+import org.elasticsearch.action.search.SearchRequest;
+import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.action.support.master.AcknowledgedResponse;
 import org.elasticsearch.action.update.UpdateRequest;
 import org.elasticsearch.client.IndicesClient;
@@ -25,12 +28,18 @@ import org.elasticsearch.client.indices.GetIndexRequest;
 import org.elasticsearch.client.indices.GetIndexResponse;
 import org.elasticsearch.cluster.metadata.MappingMetaData;
 import org.elasticsearch.common.xcontent.XContentType;
+import org.elasticsearch.index.query.QueryBuilder;
+import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.rest.RestStatus;
+import org.elasticsearch.search.SearchHit;
+import org.elasticsearch.search.SearchHits;
+import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -218,6 +227,33 @@ class DemoApplicationTests {
     }
 
     //================================================================================
+    /**查询newcar索引是否存在
+     * @author KingPlus
+     * @date 2021/6/19  11:24
+     */
+    @Test
+    public void existnewcarIndex() throws IOException {
+        IndicesClient indices = client.indices();
+        GetIndexRequest getRequest = new GetIndexRequest("newcar");
+        boolean exists = indices.exists(getRequest, RequestOptions.DEFAULT);
+        System.out.println(exists);
+
+    }
+
+    /**删除newcar索引
+     * @author KingPlus
+     * @date 2021/6/19  11:19
+     */
+    @Test
+    public void deletnewcarIndex() throws IOException {
+        IndicesClient indices = client.indices();
+        DeleteIndexRequest deleteRequest = new DeleteIndexRequest("newcar");
+        AcknowledgedResponse delete = indices.delete(deleteRequest, RequestOptions.DEFAULT);
+        System.out.println(delete);
+    }
+
+
+
     //批量操作
 
     @Test
@@ -247,6 +283,15 @@ class DemoApplicationTests {
         System.out.println(status);
     }
 
+
+    @Test
+    public void findDataFromMQ(){
+        List<NewCar> cars = newCarMapper.findAll();
+        for(NewCar car: cars){
+           // System.out.println(car);
+            System.out.println(JSON.toJSONString(car));
+        }
+    }
     /**批量导入
      * @author KingPlus
      * @date 2021/6/14  23:16
@@ -268,6 +313,49 @@ class DemoApplicationTests {
         client.bulk(bulkRequest,RequestOptions.DEFAULT);
     }
 
+    /**查询所有
+     * 1.matchAll
+     * 2.将查询结果封装到对象中，装载到List中
+     * 3.分页默认显示10条
+     * @author KingPlus
+     * @date 2021/6/19  10:17
+     */
+    @Test
+    public void testMatchMall() throws IOException {
+
+        //2.构建查询请求对象，指定查询的索引名称
+        SearchRequest searchRequest = new SearchRequest("newcar") ;
+        //4.创建查询条件构建器searchSourceBuilder
+        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+        //6.创建查询条件,查询所有
+        QueryBuilder query = QueryBuilders.matchAllQuery();
+        //5.添加查询条件
+        searchSourceBuilder.query(query);
+        //8.进行分页的大小设定
+        searchSourceBuilder.from(0);
+        searchSourceBuilder.size(20);
+        //3.添加查询条件构建器，searchSourceBuilder
+        searchRequest.source(searchSourceBuilder);
+        //1.查询，获取结果
+        SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
+
+        //7.得到查询结果
+        SearchHits hits = searchResponse.getHits();
+        long value = hits.getTotalHits().value;
+        System.out.println("总的记录数:"+value);
+        //7.1遍历查询结果
+        SearchHit[] hitsHits = hits.getHits();
+        List<NewCar> list = new ArrayList<>();
+        for(SearchHit hit:hitsHits){
+            NewCar car = JSON.parseObject(hit.getSourceAsString(), NewCar.class);
+            list.add(car);
+        }
+
+        for(NewCar c: list){
+            System.out.println(c);
+        }
+
+    }
 
 
 }
